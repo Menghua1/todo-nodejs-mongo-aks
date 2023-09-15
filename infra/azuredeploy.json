@@ -19,7 +19,6 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "[resourceGroup().location]",
       "minLength": 1,
       "metadata": {
         "description": "Primary location for all resources"
@@ -60,6 +59,10 @@
       "defaultValue": ""
     },
     "logAnalyticsName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "resourceGroupName": {
       "type": "string",
       "defaultValue": ""
     },
@@ -216,9 +219,17 @@
   },
   "resources": [
     {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "name": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]"
+    },
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "aks",
+      "resourceGroup": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -231,10 +242,10 @@
           "name": "[if(not(empty(parameters('clusterName'))), createObject('value', parameters('clusterName')), createObject('value', format('{0}{1}', variables('abbrs').containerServiceManagedClusters, variables('resourceToken'))))]",
           "containerRegistryName": "[if(not(empty(parameters('containerRegistryName'))), createObject('value', parameters('containerRegistryName')), createObject('value', format('{0}{1}', variables('abbrs').containerRegistryRegistries, variables('resourceToken'))))]",
           "logAnalyticsName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.logAnalyticsWorkspaceName.value]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.logAnalyticsWorkspaceName.value]"
           },
           "keyVaultName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.name.value]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.name.value]"
           }
         },
         "template": {
@@ -481,7 +492,7 @@
                     },
                     "kubernetesVersion": {
                       "type": "string",
-                      "defaultValue": "1.28.0",
+                      "defaultValue": "1.25.5",
                       "metadata": {
                         "description": "Kubernetes Version"
                       }
@@ -1101,13 +1112,16 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'keyvault')]",
-        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]"      ]
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'keyvault')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'monitoring')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
+      ]
     },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "cosmos",
+      "resourceGroup": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1125,7 +1139,7 @@
             "value": "[variables('tags')]"
           },
           "keyVaultName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.name.value]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.name.value]"
           }
         },
         "template": {
@@ -1534,12 +1548,15 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'keyvault')]"      ]
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'keyvault')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
+      ]
     },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "keyvault",
+      "resourceGroup": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1613,12 +1630,16 @@
             }
           }
         }
-      }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
+      ]
     },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "monitoring",
+      "resourceGroup": "[if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -3129,29 +3150,32 @@
             }
           }
         }
-      }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName'))))]"
+      ]
     }
   ],
   "outputs": {
     "AZURE_COSMOS_CONNECTION_STRING_KEY": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.connectionStringKey.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.connectionStringKey.value]"
     },
     "AZURE_COSMOS_DATABASE_NAME": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.databaseName.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.databaseName.value]"
     },
     "APPLICATIONINSIGHTS_CONNECTION_STRING": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsConnectionString.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsConnectionString.value]"
     },
     "AZURE_KEY_VAULT_ENDPOINT": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.endpoint.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.endpoint.value]"
     },
     "AZURE_KEY_VAULT_NAME": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.name.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.name.value]"
     },
     "AZURE_LOCATION": {
       "type": "string",
@@ -3163,23 +3187,23 @@
     },
     "AZURE_AKS_CLUSTER_NAME": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aks'), '2022-09-01').outputs.clusterName.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'aks'), '2022-09-01').outputs.clusterName.value]"
     },
     "AZURE_AKS_IDENTITY_CLIENT_ID": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aks'), '2022-09-01').outputs.clusterIdentity.value.clientId]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'aks'), '2022-09-01').outputs.clusterIdentity.value.clientId]"
     },
     "AZURE_CONTAINER_REGISTRY_ENDPOINT": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aks'), '2022-09-01').outputs.containerRegistryLoginServer.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'aks'), '2022-09-01').outputs.containerRegistryLoginServer.value]"
     },
     "AZURE_CONTAINER_REGISTRY_NAME": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aks'), '2022-09-01').outputs.containerRegistryName.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'aks'), '2022-09-01').outputs.containerRegistryName.value]"
     },
     "REACT_APP_APPLICATIONINSIGHTS_CONNECTION_STRING": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsConnectionString.value]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, if(not(empty(parameters('resourceGroupName'))), parameters('resourceGroupName'), format('{0}{1}', variables('abbrs').resourcesResourceGroups, parameters('environmentName')))), 'Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsConnectionString.value]"
     }
   }
 }
